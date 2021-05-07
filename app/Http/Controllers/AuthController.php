@@ -3,119 +3,197 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AuthService;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 
+/**
+ * Class AuthController
+ *
+ * @package App\Http\Controllers
+ */
 class AuthController extends Controller
 {
+    /** @var AuthService */
+    protected $service;
+
+    public function __construct()
+    {
+        $this->service = new AuthService();
+    }
+
+    /**
+     * @param Request $request
+     *
+     * @return Application|Factory|View|RedirectResponse|Redirector
+     */
     public function login(Request $request)
     {
         if ($request->isMethod('post')) {
-            $this->validate($request, [
+            $request->validate([
                 'email' => 'required|email',
                 'password' => 'required'
             ]);
 
-            $user = User::where('email', $request->input('email'))->first();
+            $user = $this->service->loginUser($request);
 
-            if (!$user || !Hash::check($request->input('password'), $user->password)) {
+            if (!$user) {
                 return redirect(route('login'))->withErrors([
                     'login' => 'Email or password is incorrect!'
                 ])->withInput();
             }
 
-            Auth::login($user);
+            return redirect(route('dashboard'));
+        }
 
-            return redirect('/dashboard');
+        if (Auth::check()) {
+            return redirect(route('dashboard'));
         }
 
         return view('auth/login');
     }
 
+    /**
+     * @param Request $request
+     *
+     * @return Application|Factory|View|RedirectResponse
+     */
     public function register(Request $request)
     {
-
         if ($request->isMethod('post')) {
-            $this->validate($request, [
-                'name' => 'required|max:100',
-                'email' => 'required|unique:users|email',
-                'password' => 'required',
-                'retype_pass' => 'required|same:password'
+            $request->validate([
+                'name' => 'required',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|min:8|confirmed',
+                'terms' => 'accepted'
             ]);
 
-            $user = User::create([
-                'name' => $request['name'],
-                'email' => $request['email'],
-                'password' => Hash::make($request['password']),
-                'remember_token' => $request['remember_token'],
-            ]);
+            $this->service->registerUser($request);
 
-            Auth::login($user);
+            return redirect(route('verification.notice'));
+        }
 
-            return redirect('/dashboard');
+        if (Auth::check()) {
+            return redirect(route('dashboard'));
         }
 
         return view('auth/register');
     }
 
-    public function getEmail()
+    /**
+     * @return Application|Factory|View
+     */
+    public function verifyNotice()
     {
+        /** @var User $user */
+        $user = Auth::user();
 
-        return view('auth.forgot_password');
+        if ($user->hasVerifiedEmail()) {
+            return redirect(route('dashboard'));
+        }
+
+        return view('auth.verifyEmail');
     }
 
-    public function postEmail(Request $request)
+    /**
+     * @param EmailVerificationRequest $request
+     *
+     * @return Application|RedirectResponse|Redirector
+     */
+    public function verifyEmail(EmailVerificationRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email|exists:users',
-        ]);
+        $request->fulfill();
 
-        $token = Str::random(60);
-
-        DB::table('password_resets')->insert(
-            ['email' => $request->email, 'token' => $token, 'created_at' => Carbon::now()]
-        );
-
-        Mail::send('auth.verify',['token' => $token], function($message) use ($request) {
-            $message->from($request->email);
-            $message->to('renata.mihaela98@yahoo.com');
-            $message->subject('Reset Password Notification');
-        });
-
-        return back()->with('message', 'We have e-mailed your password reset link!');
+        return redirect(route('dashboard'));
     }
 
-    public function getPassword($token) {
+    /**
+     * @return RedirectResponse
+     */
+    public function resendVerifyEmail(): RedirectResponse
+    {
+        /** @var User $user */
+        $user = Auth::user();
 
-        return view('auth.reset', ['token' => $token]);
+        $user->sendEmailVerificationNotification();
+
+        return back()->with('resent', 'Verification link sent!');
     }
 
-    public function updatePassword(Request $request)
+    /**
+     * @param Request $request
+     *
+     * @return Application|Factory|View|RedirectResponse
+     */
+    public function forgotPassword(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email|exists:users',
-            'password' => 'required|confirmed',
-            'password_confirmation' => 'required',
+        if ($request->isMethod('post')) {
+            $request->validate(['email' => 'required|email']);
 
-        ]);
+            $status = Password::sendResetLink(
+                $request->only('email')
+            );
 
-        $updatePassword = DB::table('password_resets')
-            ->where(['email' => $request->email, 'token' => $request->token])
-            ->first();
+            return $status === Password::RESET_LINK_SENT
+                ? back()->with(['status' => __($status)])
+                : back()->withErrors(['email' => __($status)]);
+        }
 
-        if(!$updatePassword)
-            return back()->withInput()->with('error', 'Invalid token!');
+        if (Auth::check()) {
+            return redirect(route('dashboard'));
+        }
 
-        $user = User::where('email', $request->email)
-            ->update(['password' => Hash::make($request->password)]);
+        return view('auth/forgotPassword');
+    }
 
-        DB::table('password_resets')->where(['email'=> $request->email])->delete();
+    /**
+     * @param Request $request
+     *
+     * @return Application|Factory|View|RedirectResponse
+     */
+    public function resetPassword(Request $request)
+    {
+        if ($request->isMethod('post')) {
+            $request->validate([
+                'token' => 'required',
+                'email' => 'required|email',
+                'password' => 'required|min:8|confirmed',
+            ]);
 
-        return redirect('/login')->with('message', 'Your password has been changed!');
+            $status = $this->service->resetPassword($request);
+
+            return $status == Password::PASSWORD_RESET
+                ? redirect()->route('login')->with('status', __($status))
+                : back()->withErrors(['email' => [__($status)]]);
+        }
+
+        if (Auth::check()) {
+            return redirect(route('dashboard'));
+        }
+
+        return view('auth/recoverPassword');
+    }
+
+    /**
+     * @param Request $request
+     *
+     * @return Application|RedirectResponse|Redirector
+     */
+    public function logout(Request $request)
+    {
+        Auth::logout();
+
+        $request->session()->invalidate();
+
+        $request->session()->regenerateToken();
+
+        return redirect(route('login'));
     }
 }

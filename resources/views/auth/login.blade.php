@@ -1,26 +1,32 @@
-@extends('base')
+@extends('layout.base')
 
-@section('content')
-    <div class="login-box" style="margin-right: auto; margin-left: auto; margin-top: 100px">
+@section('body')
+    <body class="hold-transition login-page">
+    <div class="login-box">
         <div class="login-logo">
-            <a href="{{route('login')}}">Log in</a>
+            <a href="{{route('dashboard')}}"><b>Admin</b> LTE</a>
         </div>
-        <!-- /.login-logo -->
         <div class="card">
             <div class="card-body login-card-body">
                 <p class="login-box-msg">Sign in to start your session</p>
 
-                @if ($errors->has('login'))
-                    <div class="alert alert-danger">{{$errors->first('login')}}</div> @endif
-
-                <form action="{{route('login')}}" method="post">
+                <form action="" method="post">
                     @csrf
+
+                    @if (session('status'))
+                        <div class="alert alert-success" role="alert">{{session('status')}}</div>
+                    @endif
+
+                    @if ($errors->has('login'))
+                        <div class="alert alert-danger">{{$errors->first('login')}}</div> @endif
+
                     @if ($errors->has('email'))
                         <div class="alert alert-danger">{{$errors->first('email')}}</div> @endif
+
                     <div class="input-group mb-3">
                         <input name="email" type="email"
                                class="form-control @if ($errors->has('email')) is-invalid @endif" placeholder="Email"
-                               value="{{old('email')}}">
+                               value="{{old('email')}}"/>
                         <div class="input-group-append">
                             <div class="input-group-text">
                                 <span class="fas fa-envelope"></span>
@@ -32,7 +38,7 @@
                     <div class="input-group mb-3">
                         <input name="password" type="password"
                                class="form-control @if ($errors->has('password')) is-invalid @endif"
-                               placeholder="Password">
+                               placeholder="Password"/>
                         <div class="input-group-append">
                             <div class="input-group-text">
                                 <span class="fas fa-lock"></span>
@@ -42,17 +48,15 @@
                     <div class="row">
                         <div class="col-8">
                             <div class="icheck-primary">
-                                <input type="checkbox" id="remember">
+                                <input name="remember" type="checkbox" id="remember">
                                 <label for="remember">
                                     Remember Me
                                 </label>
                             </div>
                         </div>
-                        <!-- /.col -->
                         <div class="col-4">
                             <button type="submit" class="btn btn-primary btn-block">Sign In</button>
                         </div>
-                        <!-- /.col -->
                     </div>
                 </form>
 
@@ -65,17 +69,15 @@
                         <i class="fab fa-google-plus mr-2"></i> Sign in using Google+
                     </a>
                 </div>
-                <!-- /.social-auth-links -->
 
                 <p class="mb-1">
-                    <a href="{{route('forget-password')}}">I forgot my password</a>
+                    <a href="{{route('password.email')}}">I forgot my password</a>
                 </p>
                 <p class="mb-0">
-                    <a href="{{route('register')}}" class="text-center">New account</a>
+                    <a href="{{route('register')}}" class="text-center">Register a new membership</a>
                 </p>
             </div>
-            <!-- /.login-card-body -->
         </div>
     </div>
-    <!-- /.login-box -->
+    </body>
 @endsection
