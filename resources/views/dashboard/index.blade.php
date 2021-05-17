@@ -10,7 +10,7 @@
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="{{route('dashboard')}}">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{{route('dashboard')}}">Dashboard</a></li>
                     </ol>
                 </div>
             </div>
@@ -39,10 +39,10 @@
                         <!-- small card -->
                         <div class="small-box bg-primary">
                             <div class="inner">
-                                @if(\Illuminate\Support\Facades\Auth::user()->role === \App\Models\User::ROLE_ADMIN)
+                                @if($user->role === \App\Models\User::ROLE_ADMIN)
                                     <h3>{{\App\Models\Board::count()}}</h3>
                                 @else
-                                    <h3>{{DB::table('boards')->where('user_id', '=', \Illuminate\Support\Facades\Auth::user()->id)->count()}}</h3>
+                                    <h3>{{DB::table('boards')->where('user_id', '=', $user->id)->count()}}</h3>
 
                                 @endif
 
@@ -60,7 +60,7 @@
                         <!-- small card -->
                         <div class="small-box bg-success">
                             <div class="inner">
-                                @if(\Illuminate\Support\Facades\Auth::user()->role === \App\Models\User::ROLE_ADMIN)
+                                @if($user->role === \App\Models\User::ROLE_ADMIN)
                                     <h3>{{\App\Models\Task::count()}}</h3>
                                 @else
                                     <h3>{{'tasks'}}</h3>
@@ -71,7 +71,7 @@
                             <div class="icon">
                                 <i class="fas fa-chart-pie"></i>
                             </div>
-                            <a href="{{route('tasks.all')}}" class="small-box-footer">
+                            <a href="" class="small-box-footer">
                                 More info <i class="fas fa-arrow-circle-right"></i>
                             </a>
                         </div>
