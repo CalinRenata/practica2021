@@ -51,14 +51,7 @@
                         </p>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="{{route('board.view',['id'=>'1'])}}" class="nav-link">
-                        <i class="far fa-circle nav-icon"></i>
-                        <p>
-                            Tasks
-                        </p>
-                    </a>
-                </li>
+
                 <li class="nav-item">
                     <a href="{{route('logout')}}" class="nav-link">
                         <i class="nav-icon fas fa-columns"></i>

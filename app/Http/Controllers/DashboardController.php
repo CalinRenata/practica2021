@@ -9,6 +9,7 @@ use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
+
 /**
  * Class DashboardController
  *
@@ -21,6 +22,39 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        return view('dashboard.index');
+        $user = Auth::user();
+
+        $boards = Board::query();
+
+        if ($user->role === User::ROLE_USER) {
+            $boards = $boards->where(function ($query) use ($user) {
+                //Suntem in tabele de boards in continuare
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('boardUsers', function ($query) use ($user) {
+                        //Suntem in tabela de board_users
+                        $query->where('user_id', $user->id);
+                    });
+            });
+        }
+
+
+        $nrboards = $boards->count();
+
+        $boards = $boards->first();
+
+        $tasks= $boards->tasks()->count();
+
+        $nruser=User::where('role',User::ROLE_USER)->count();
+        $nradmin=User::where('role',User::ROLE_ADMIN)->count();
+
+        return view(
+            'dashboard.index',
+            [
+                'nrboards' => $nrboards,
+                'tasks' =>$tasks,
+                'nruser'=>$nruser,
+                'nradmin'=>$nradmin
+            ]
+        );
     }
 }
